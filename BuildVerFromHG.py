@@ -1,102 +1,60 @@
 #!/usr/bin/python
 #
-
-"""
-
-
-"""
+# Obtain the current Mercurial version for the local repository, and write this to the
+# build version of the XCode project this script is run from.
+# Also can check the build configuration and generate an error if uncommited changes exist
+# and (for example) a Release build is being made.
+#
+# This script expects to be run as a build phase between Link Binary With Libraries and
+# Copy Bundle Resources.
+#
 
 import os
-import optparse
 import os.path
-import fnmatch
 import string
-import getopt
 import sys
-import re
-
-debug = False
-
-options = None
 
 
+# Set this to true to cause the IDs to be shortened to "XXXX" or "XXXX+"
+shortenID = 0
 
-def main( argv ):
-	"""Pull the current Mercurial version and write it to the XCode project's info file as the build version.
-
-	(use option '-h' to get options help)
-	"""
-
-	global options, debug
-
-	usage = "%prog [options] <strings file>"
-
-	parser = optparse.OptionParser(usage=usage)
-
-	parser.add_option( "-d", "--dir",
-						action="store", type="string", dest="startdir", default=None,
-						help="Directory to process.  (default is CD)" )
-
-	parser.add_option( "-n", "--noActions",
-						action="store_true", dest="noActions", default=False,
-						help="no actions" )
-
-	parser.add_option( "-o", "--outfile",
-						action="store", type="string", dest="outfile", default=None,
-						help="File to send the output data to" )
-
-	parser.add_option( "-v", "--verbose",
-						action="store_const", const=1, dest="verbose", default=1,
-						help="verbose [default]" )
-
-	parser.add_option( "-q", "--quiet",
-						action="store_const", const=0, dest="verbose",
-						help="quiet" )
-
-	parser.add_option( "--noisy",
-						action="store_const", const=2, dest="verbose",
-						help="noisy" )
-
-	(options, args) = parser.parse_args(argv)
-
-	if options.verbose > 1:
-		debug = True
-		print options
-		print args
-
-	#print config.options.verbose
-
-# 	if len(args) > 1:
-# 		fn = args[1]
-# 	else:
-# 		print "No info file name given."
-# 		print main.__doc__
-# 		sys.exit(1)
+# Configurations that allow uncommitted changes.
+# If a configuration like "Release" is not in this list, the script will generate an error
+# if there are changes that haven't been committed when a release build is attempted.
+uncommittedAllowed = [ 'Debug' ]
+#uncommittedAllowed = [ 'Debug', 'AdHoc', 'Release' ]
 
 
+fh = os.popen( "/usr/local/bin/hg id -i" )	# Ask Mercurial for the global version ID
+buildVer = fh.readline().strip()			# Read it from the process, and strip the newline
 
-	#
-	# Perform the main processing.
-	#
-	fh = os.popen( "/usr/local/bin/hg id -i" )	# Ask Mercurial for the global version ID
-	gv = fh.readline().strip()					# Read it from the process, and strip off the newline
-	#print "'%s'" % gv
+if buildVer[-1:] == '+':
+	# Plus sign at the end means uncommitted changes
 
-	# Build the path to the Info plist in the build products directory.
-	infoPath = os.path.join( os.environ['BUILT_PRODUCTS_DIR'], os.environ['WRAPPER_NAME'], "Info" )
-	print infoPath
-	#cmd = "defaults read %s CFBundleVersion" % ( path )
-	cmd = "defaults write %s CFBundleVersion %s" % ( infoPath, gv )
-	#print cmd
-	os.system( cmd )
-	
-	return 0	# Success
+	# Check to see if this should cause a build error.
+	config = os.environ['CONFIGURATION']
+	if not config in uncommittedAllowed:
+		# For this configuration, doing a build with uncommitted changes is an error.
+		print "ERROR: Uncommitted changes in the repository while doing %s build!" % config
+		sys.exit( 1 )
 
+	# Do we want a shorter ID?
+	if shortenID:
+		buildVer = buildVer[:2] + buildVer[-3:]	# First two chars and the last three chars (plus sign)	
+else:
+	# Do we want a shorter ID?
+	if shortenID:
+		buildVer = buildVer[:2] + buildVer[-2:]	# First two chars and the last two chars
 
+# Build the path to the Info plist in the build products directory.
+infoPath = os.path.join( os.environ['BUILT_PRODUCTS_DIR'], os.environ['WRAPPER_NAME'], "Info" )
+#print infoPath
 
-#------------------------------
+print "Setting build version of '%s' to PList %s" % ( buildVer, infoPath )
 
-if __name__ == '__main__':
-	sys.exit( main(sys.argv) or 0 )
+#cmd = "defaults read %s CFBundleVersion" % ( infoPath )
+cmd = "defaults write %s CFBundleVersion %s" % ( infoPath, buildVer )
+#print cmd
+os.system( cmd )
 
-
+sys.exit( 0 )	# Success
