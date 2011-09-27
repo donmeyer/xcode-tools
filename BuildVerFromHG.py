@@ -24,13 +24,14 @@ shortenID = 0
 uncommittedAllowed = [ 'Debug' ]
 #uncommittedAllowed = [ 'Debug', 'AdHoc', 'Release' ]
 
-
 fh = os.popen( "/usr/local/bin/hg id -i" )	# Ask Mercurial for the global version ID
 buildVer = fh.readline().strip()			# Read it from the process, and strip the newline
+print "Build Version '%s'" % buildVer
 
 if buildVer[-1:] == '+':
 	# Plus sign at the end means uncommitted changes
-
+	print "Uncommited changes"
+	
 	# Check to see if this should cause a build error.
 	config = os.environ['CONFIGURATION']
 	if not config in uncommittedAllowed:
@@ -53,7 +54,7 @@ infoPath = os.path.join( os.environ['BUILT_PRODUCTS_DIR'], os.environ['WRAPPER_N
 print "Setting build version of '%s' to PList %s" % ( buildVer, infoPath )
 
 #cmd = "defaults read %s CFBundleVersion" % ( infoPath )
-cmd = "defaults write %s CFBundleVersion %s" % ( infoPath, buildVer )
+cmd = 'defaults write "%s" CFBundleVersion %s' % ( infoPath, buildVer )
 #print cmd
 os.system( cmd )
 
