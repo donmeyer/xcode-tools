@@ -24,16 +24,22 @@ shortenID = 0
 uncommittedAllowed = [ 'Debug' ]
 #uncommittedAllowed = [ 'Debug', 'AdHoc', 'Release' ]
 
+# Configurations for which we do NOT set the bundle version to our Mercurial version ID.
+inhibitBundleVersionConfigs = [ 'Release' ]
+
+
 fh = os.popen( "/usr/local/bin/hg id -i" )	# Ask Mercurial for the global version ID
 buildVer = fh.readline().strip()			# Read it from the process, and strip the newline
 print "Build Version '%s'" % buildVer
+
+# Build config - typically 'Debug', 'Release', etc.
+config = os.environ['CONFIGURATION']
 
 if buildVer[-1:] == '+':
 	# Plus sign at the end means uncommitted changes
 	print "Uncommited changes"
 	
 	# Check to see if this should cause a build error.
-	config = os.environ['CONFIGURATION']
 	if not config in uncommittedAllowed:
 		# For this configuration, doing a build with uncommitted changes is an error.
 		print "ERROR: Uncommitted changes in the repository while doing %s build!" % config
@@ -47,15 +53,19 @@ else:
 	if shortenID:
 		buildVer = buildVer[:2] + buildVer[-2:]	# First two chars and the last two chars
 
-# Build the path to the Info plist in the build products directory.
-infoPath = os.path.join( os.environ['BUILT_PRODUCTS_DIR'], os.environ['WRAPPER_NAME'], "Info" )
-#print infoPath
-
-print "Setting build version of '%s' to PList %s" % ( buildVer, infoPath )
-
-#cmd = "defaults read %s CFBundleVersion" % ( infoPath )
-cmd = 'defaults write "%s" CFBundleVersion %s' % ( infoPath, buildVer )
-#print cmd
-os.system( cmd )
+# Is this a config that we want to set the bundle version in?
+if not config in inhibitBundleVersionConfigs:
+	# Build the path to the Info plist in the build products directory.
+	infoPath = os.path.join( os.environ['BUILT_PRODUCTS_DIR'], os.environ['WRAPPER_NAME'], "Info" )
+	#print infoPath
+	
+	print "Setting build version of '%s' to PList %s" % ( buildVer, infoPath )
+	
+	#cmd = "defaults read %s CFBundleVersion" % ( infoPath )
+	cmd = 'defaults write "%s" CFBundleVersion %s' % ( infoPath, buildVer )
+	#print cmd
+	os.system( cmd )
+else:
+	print "Configuration %s: Build version unchanged." % config
 
 sys.exit( 0 )	# Success
