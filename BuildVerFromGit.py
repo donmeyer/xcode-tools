@@ -22,7 +22,7 @@ uncommittedAllowed = [ 'Debug' ]
 #uncommittedAllowed = [ 'Debug', 'AdHoc', 'Release' ]
 
 # Configurations for which we do NOT set the bundle version to our Git version ID.
-inhibitBundleVersionConfigs = [ 'Release' ]
+inhibitBundleVersionConfigs = [ 'Release', 'Distribution' ]
 
 
 fh = os.popen( "/usr/bin/git describe --always --dirty" )	# Ask Git for the short hash
@@ -31,6 +31,7 @@ print "Build Version '%s'" % buildVer
 
 # Build config - typically 'Debug', 'Release', etc.
 config = os.environ['CONFIGURATION']
+print "Config is %s" % config
 
 if buildVer[-5:] == 'dirty':
 	# Uncommitted changes
